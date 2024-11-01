@@ -1,7 +1,7 @@
 #include "img.h"
+#include <math.h>
 #include <stdint.h>
 #include <stdio.h>
-#include <math.h>
 
 #define VW 800
 #define VH 600
@@ -36,14 +36,16 @@ float cast_ray(const uint8_t *map, const float *player_xy, float player_angle) {
 void render_view(uint32_t *framebuffer, const uint8_t *map,
                  const float *player_xy, float player_angle, float player_fov) {
     for (int i = 0; i < VW; ++i) {
-        float angle = (player_angle - player_fov / 2) + (player_fov * i) / (float) VW;
+        float angle =
+            (player_angle - player_fov / 2) + (player_fov * i) / (float)VW;
         float current_dist = cast_ray(map, player_xy, angle);
 
         size_t column = VH / current_dist;
 
         uint32_t cyan = (0 << 24) + (255 << 16) + (255 << 8);
 
-        draw_rect_on_buffer(framebuffer, i, VH/2 - column/2, 1, column, cyan);
+        draw_rect_on_buffer(framebuffer, i, VH / 2 - column / 2, 1, column,
+                            cyan);
     }
 }
 
@@ -55,19 +57,19 @@ int main() {
 
     // mapa
     const uint8_t map[MAP_SIDE * MAP_SIDE] = "1111111111"
-                                             "1  1     1"
-                                             "1  111   1"
                                              "1        1"
-                                             "1    11111"
                                              "1        1"
+                                             "1       11"
+                                             "1        1"
+                                             "1      111"
                                              "1        1"
                                              "1   1    1"
                                              "1   1    1"
                                              "1111111111";
 
-    const float player_xy[2] = {3.8, 5.2};
-    const float player_angle = 45.;
-    const float player_fov = PI / 1.;
+    const float player_xy[2] = {5, 5};
+    const float player_angle = 0.;
+    const float player_fov = PI / 2.;
 
     // dibujamos mapa
     const size_t rect_w = VW / MAP_SIDE;
