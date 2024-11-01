@@ -1,19 +1,27 @@
+# compilador
 CC = gcc
-CFLAGS = -Wall -Wextra -std=c11
 
-SRC = $(wildcard src/*.c)
-OBJ = $(SRC:.c=.o)
+BUILD_DIR = build
 
-TARGET = main
+# archivitos .o
+OBJS = $(addprefix $(BUILD_DIR)/, main.o img.o)
 
-all: $(TARGET)
-	rm -f $(OBJ)
+# ejecutable principal
+BIN = $(BUILD_DIR)/bin
 
-$(TARGET): $(OBJ)
-	$(CC) $(CFLAGS) -o $@ $(OBJ) -lm
+$(BIN): $(OBJS)
+	$(CC) $^ -o $@ -lm -O3
 
-%.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@ -lm
+$(BUILD_DIR)/main.o: src/main.c
+	gcc -c $^ -o $@	-O3
+
+$(BUILD_DIR)/img.o: src/img.c
+	gcc -c $^ -o $@ -O3
 
 clean:
-	rm -f $(OBJ) $(TARGET)
+	rm $(BIN)
+	rm $(OBJS)
+
+test: $(BIN)
+	# sacamos el valgrind
+	valgrind --leak-check=full ./$(BIN)

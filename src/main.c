@@ -90,7 +90,7 @@ int main() {
                         player_xy[1] * rect_h, 5, 5, white);
 
     // pal disco
-    write_ppm("map.ppm", framebuffer, VW * VH, VW, VH);
+    write_ppm("./assets/map.ppm", framebuffer, VW * VH, VW, VH);
 
     // reseteamos la imagen
     generate_default_img(framebuffer, VW, VH);
@@ -99,7 +99,7 @@ int main() {
     render_view(framebuffer, map, player_xy, player_angle, player_fov);
 
     // pal disco de nuevo
-    write_ppm("view.ppm", framebuffer, VW * VH, VW, VH);
+    write_ppm("./assets/view.ppm", framebuffer, VW * VH, VW, VH);
 
     return 0;
 }
