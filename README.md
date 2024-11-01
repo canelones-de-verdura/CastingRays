@@ -6,7 +6,7 @@
 
 A 3D (not really) engine, *à la* Wolfenstein.
 
-![](assets/view-example.png)  
+![](assets/view-example.jpg)  
 
 --  
 
