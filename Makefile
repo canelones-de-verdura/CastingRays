@@ -10,7 +10,7 @@ OBJS = $(addprefix $(BUILD_DIR)/, main.o img.o)
 BIN = $(BUILD_DIR)/bin
 
 $(BIN): $(OBJS)
-	$(CC) $^ -o $@ -lm -O3
+	$(CC) $^ -o $@ -lm -O3 `sdl2-config --cflags --libs`
 
 $(BUILD_DIR)/main.o: src/main.c
 	gcc -c $^ -o $@	-O3
