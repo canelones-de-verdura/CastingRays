@@ -21,7 +21,7 @@ float cast_ray(const Map *map, Vec2 position, float direction) {
     for (; ray_len < 20; ray_len += .05) {
         x = position.x + ray_len * cos(direction);
         y = position.y + ray_len * sin(direction);
-        if (map->data[(int)x + (int)y * map->width] != ' ')
+        if (map->tiles[(int)x + (int)y * map->width].type != FLOOR)
             break;
     }
 
@@ -34,9 +34,11 @@ void render_view(uint32_t *framebuffer, const size_t fbw, const size_t fbh,
         float angle = (direction - fov / 2) + (fov * i) / (float)fbw;
         float current_dist = cast_ray(map, position, angle);
 
-        size_t column = fbh / current_dist;
+        size_t column = (fbh / current_dist) > fbh ? fbh : fbh / current_dist;
 
-        uint32_t cyan = (0 << 24) + (255 << 16) + (255 << 8);
+        uint8_t g = (255 - (int)current_dist * 10) < 0 ? 0 : 255 - (int)current_dist * 10;
+        uint8_t b = (255 - (int)current_dist * 10) < 0 ? 0 : 255 - (int)current_dist * 10;
+        uint32_t cyan = (0 << 24) + (g << 16) + (b << 8);
 
         draw_rect_on_buffer(framebuffer, fbw, fbh, i, fbh / 2 - column / 2, 1,
                             column, cyan);
