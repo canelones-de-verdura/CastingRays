@@ -1,5 +1,5 @@
-#ifndef RENDER_H
-#define RENDER_H
+#ifndef RAYS_H
+#define RAYS_H
 
 #include <stdint.h>
 #include <stdio.h>

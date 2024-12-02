@@ -12,7 +12,7 @@
 
 #include "img.h"
 #include "player.h"
-#include "render.h"
+#include "rays.h"
 #include "types.h"
 
 #define VW 800
@@ -33,10 +33,13 @@ void load_map(Map *map, const char *map_data, size_t map_w, size_t map_l) {
         for (int j = 0; j < map_l; ++j) {
             current_tile = &map->tiles[i + j * map_w];
 
-            if (map_data[i + j * map_w] == ' ')
+            if (map_data[i + j * map_w] == ' ') {
                 current_tile->type = FLOOR;
-            else
+                current_tile->walkable = true;
+            } else {
                 current_tile->type = WALL;
+                current_tile->walkable = false;
+            }
         }
     }
 }

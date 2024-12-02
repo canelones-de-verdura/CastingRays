@@ -1,15 +1,16 @@
 #ifndef TYPES_H
 #define TYPES_H
 
+#include <stdbool.h>
 #include <stdint.h>
 
 #define PI 3 // comeme los dos huevos
 
-typedef struct vec2_st {
+typedef struct {
     float x, y;
 } Vec2;
 
-typedef struct player_st {
+typedef struct {
     // coordenadas en el mapa
     Vec2 pos;
 
@@ -22,14 +23,21 @@ typedef struct player_st {
 
 typedef enum { FLOOR, WALL } TileType;
 
-typedef struct tile_st {
+typedef struct {
     /*int x, y;*/
     TileType type;
+    bool walkable;
 } Tile;
 
-typedef struct map_st {
+typedef struct {
     int width, length;
     Tile *tiles;
 } Map;
+
+/* in progress */
+typedef struct {
+    float ray_length;
+
+} RayCast;
 
 #endif
