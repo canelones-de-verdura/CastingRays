@@ -15,29 +15,33 @@ void draw_rect_on_buffer(uint32_t *framebuffer, const size_t fbw,
     }
 }
 
-float cast_ray(const Map *map, Vec2 position, float direction) {
-    float ray_len = 0;
-    float x, y;
-    for (; ray_len < 20; ray_len += .05) {
-        x = position.x + ray_len * cos(direction);
-        y = position.y + ray_len * sin(direction);
-        if (map->tiles[(int)x + (int)y * map->width].type != FLOOR)
+RayCast cast_ray(const Map *map, Vec2 position, float direction) {
+    RayCast ray = {
+        .ray_length = 0,
+        .hit_x = 0,
+        .hit_y = 0
+    };
+
+    for (; ray.ray_length < 20; ray.ray_length += .05) {
+        ray.hit_x = position.x + ray.ray_length * cos(direction);
+        ray.hit_y = position.y + ray.ray_length * sin(direction);
+        if (map->tiles[(int)ray.hit_x + (int)ray.hit_y * map->width].type != FLOOR)
             break;
     }
 
-    return ray_len;
+    return ray;
 }
 
 void render_view(uint32_t *framebuffer, const size_t fbw, const size_t fbh,
                  const Map *map, Vec2 position, float direction, float fov) {
     for (int i = 0; i < fbw; ++i) {
         float angle = (direction - fov / 2) + (fov * i) / (float)fbw;
-        float current_dist = cast_ray(map, position, angle);
+        RayCast ray = cast_ray(map, position, angle);
 
-        size_t column = (fbh / current_dist) > fbh ? fbh : fbh / current_dist;
+        size_t column = (fbh / ray.ray_length) > fbh ? fbh : fbh / ray.ray_length;
 
-        uint8_t g = (255 - (int)current_dist * 10) < 0 ? 0 : 255 - (int)current_dist * 10;
-        uint8_t b = (255 - (int)current_dist * 10) < 0 ? 0 : 255 - (int)current_dist * 10;
+        uint8_t g = (255 - (int)ray.ray_length * 10) < 0 ? 0 : 255 - (int)ray.ray_length * 10;
+        uint8_t b = (255 - (int)ray.ray_length * 10) < 0 ? 0 : 255 - (int)ray.ray_length * 10;
         uint32_t cyan = (0 << 24) + (g << 16) + (b << 8);
 
         draw_rect_on_buffer(framebuffer, fbw, fbh, i, fbh / 2 - column / 2, 1,

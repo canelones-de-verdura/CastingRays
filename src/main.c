@@ -162,11 +162,6 @@ int main() {
 
         generate_default_img(pixels, VW, VH);
 
-        // to' negro
-        /*for (int i = 0; i < VW; ++i)*/
-        /*    for (int j = 0; j < VH; ++j)*/
-        /*        ((int *)pixels)[i + j * VW] = colors_in(0, 0, 0, 0);*/
-
         render_view(pixels, VW, VH, &map, player.pos, player.direction,
                     player.fov);
 
@@ -176,6 +171,9 @@ int main() {
         SDL_RenderCopy(ren, txr, NULL, NULL);
         SDL_RenderPresent(ren);
     }
+
+    // limpiamos
+    free(map.tiles);
 
     SDL_DestroyTexture(txr);
     SDL_DestroyRenderer(ren);

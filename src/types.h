@@ -34,10 +34,8 @@ typedef struct {
     Tile *tiles;
 } Map;
 
-/* in progress */
 typedef struct {
-    float ray_length;
-
+    float ray_length, hit_x, hit_y;
 } RayCast;
 
 #endif

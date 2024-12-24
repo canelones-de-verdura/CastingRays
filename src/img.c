@@ -8,11 +8,14 @@ uint32_t colors_in(const uint8_t r, const uint8_t g, const uint8_t b,
 
 void generate_default_img(uint32_t *image, size_t width, size_t height) {
     uint8_t r, g, b, a = 255;
+    r = 0;
+    b = 0;
+    g = 0;
     for (size_t i = 0; i < width; ++i) {
         for (size_t j = 0; j < height; ++j) {
-            r = 255 * i / (float)width;
-            g = 255 * j / (float)height;
-            b = 255 * (i + j) / (float)width * height;
+            /*r = 255 * i / (float)width;*/
+            /*g = 255 * j / (float)height;*/
+            /*b = 255 * (i + j) / (float)width * height;*/
             image[i + j * width] = colors_in(r, g, b, a);
         }
     }
@@ -31,8 +34,8 @@ void write_ppm(const char *filename, const uint32_t *image, size_t img_size,
     FILE *new_ppm = fopen(filename, "w");
     fprintf(new_ppm, "P6\n%zu %zu\n255\n", width, height);
     uint8_t r, g, b, a;
-    for (size_t _ = 0; _ < img_size; ++_) {
-        colors_out(image[_], &r, &g, &b, &a);
+    for (size_t i = 0; i < img_size; ++i) {
+        colors_out(image[i], &r, &g, &b, &a);
         a = 255;
         fprintf(new_ppm, "%c%c%c", r, g, b);
     }

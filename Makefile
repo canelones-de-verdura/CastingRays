@@ -44,3 +44,6 @@ clean:
 
 test: $(BIN)
 	valgrind --leak-check=full ./$(BIN)
+
+run: $(BIN)
+	./$(BIN)
