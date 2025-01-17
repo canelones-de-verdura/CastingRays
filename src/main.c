@@ -1,3 +1,4 @@
+#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -5,18 +6,17 @@
 
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_events.h>
+#include <SDL2/SDL_keyboard.h>
 #include <SDL2/SDL_keycode.h>
 #include <SDL2/SDL_render.h>
 #include <SDL2/SDL_timer.h>
 #include <SDL2/SDL_video.h>
 
+#include "data/screen.h"
 #include "img.h"
 #include "player.h"
 #include "rays.h"
 #include "types.h"
-
-#define VW 800
-#define VH 600
 
 #define MAP_SIDE 20
 
@@ -42,6 +42,12 @@ void load_map(Map *map, const char *map_data, size_t map_w, size_t map_l) {
             }
         }
     }
+}
+
+void FramebufferInit(FrameBuffer *fb) {
+    fb->width = VIEW_W;
+    fb->height = VIEW_H;
+    fb->buf = calloc(VIEW_W * VIEW_H, sizeof(uint32_t));
 }
 
 int main() {
@@ -79,6 +85,10 @@ int main() {
     Player player;
     PlayerInit(&player);
 
+    // framebuffer
+    FrameBuffer fb;
+    FramebufferInit(&fb);
+
     // sdl2
     if (SDL_Init(SDL_INIT_VIDEO) < 0)
         return 1;
@@ -87,13 +97,15 @@ int main() {
     SDL_Window *win;
     SDL_Renderer *ren;
 
-    int res = SDL_CreateWindowAndRenderer(VW, VH, win_flags, &win, &ren);
+    int res =
+        SDL_CreateWindowAndRenderer(VIEW_W, VIEW_H, win_flags, &win, &ren);
 
     if (res < 0) // supuestamente no tendría que chequear win/ren
         return 1;
 
-    SDL_Texture *txr = SDL_CreateTexture(ren, SDL_PIXELFORMAT_RGBA8888,
-                                         SDL_TEXTUREACCESS_STREAMING, VW, VH);
+    SDL_Texture *txr =
+        SDL_CreateTexture(ren, SDL_PIXELFORMAT_RGBA8888,
+                          SDL_TEXTUREACCESS_STREAMING, VIEW_W, VIEW_H);
     if (!txr)
         return 1;
 
@@ -127,6 +139,13 @@ int main() {
                 cont = 0;
                 break;
             case SDL_KEYDOWN:
+                /*const uint8_t *keyboard_state = SDL_GetKeyboardState(NULL);*/
+                /*if (keyboard_state[SDL_SCANCODE_W]) {*/
+                /*    if (keyboard_state[SDL_SCANCODE_D]) {*/
+                /*        PlayerMove(&player, UPRIGHT);*/
+                /*    }*/
+                /*}*/
+
                 // trucho mal
                 switch (event.key.keysym.sym) {
                 case SDLK_w:
@@ -160,10 +179,18 @@ int main() {
         // tiene que haber una forma mejor de dibujar el buffer xq esto es
         // nefasto
 
-        generate_default_img(pixels, VW, VH);
+        generate_default_img(fb.buf, fb.width, fb.height);
 
-        render_view(pixels, VW, VH, &map, player.pos, player.direction,
-                    player.fov);
+        render_view(&fb, &map, &player);
+
+        /*render_view(fb.buf, fb.width, fb.height, &map, player.pos,
+         * player.direction,*/
+        /*            player.fov);*/
+
+        // Copiamos el buffer a la textura que usa SDL
+        for (int i = 0; i < fb.height * fb.width; ++i) {
+            ((uint32_t *)pixels)[i] = fb.buf[i];
+        }
 
         SDL_UnlockTexture(txr);
 
@@ -174,7 +201,6 @@ int main() {
 
     // limpiamos
     free(map.tiles);
-
     SDL_DestroyTexture(txr);
     SDL_DestroyRenderer(ren);
     SDL_DestroyWindow(win);

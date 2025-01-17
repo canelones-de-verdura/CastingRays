@@ -37,7 +37,6 @@ $(BUILD_DIR)/rays.o: src/rays.c
 $(BUILD_DIR)/player.o: src/player.c
 	gcc -c $^ -o $@ $(FLAGS)
 
-
 clean:
 	rm $(BIN)
 	rm $(OBJS)

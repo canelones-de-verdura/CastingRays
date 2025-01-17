@@ -2,6 +2,7 @@
 #define TYPES_H
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 #define PI 3 // comeme los dos huevos
@@ -37,5 +38,10 @@ typedef struct {
 typedef struct {
     float ray_length, hit_x, hit_y;
 } RayCast;
+
+typedef struct {
+    size_t width, height;
+    uint32_t *buf;
+} FrameBuffer;
 
 #endif
