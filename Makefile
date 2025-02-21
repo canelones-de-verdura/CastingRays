@@ -3,7 +3,7 @@ CC = gcc
 
 BUILD_DIR = build
 
-# archivitos .o
+# archivitos
 SRC_DIR = src
 SRC = $(addprefix $(SRC_DIR)/, main.c)
 
