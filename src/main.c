@@ -1,209 +1,128 @@
-#include <stddef.h>
-#include <stdint.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <SDL3/SDL_error.h>
+#include <SDL3/SDL_events.h>
+#include <SDL3/SDL_init.h>
+#include <SDL3/SDL_log.h>
+#include <SDL3/SDL_main.h>
+#include <SDL3/SDL_render.h>
+#include <SDL3/SDL_video.h>
 
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_events.h>
-#include <SDL2/SDL_keyboard.h>
-#include <SDL2/SDL_keycode.h>
-#include <SDL2/SDL_render.h>
-#include <SDL2/SDL_timer.h>
-#include <SDL2/SDL_video.h>
+#include <math.h>
 
-#include "data/screen.h"
-#include "img.h"
-#include "player.h"
-#include "rays.h"
-#include "types.h"
+#define VW 800
+#define VH 600
+#define MAPSIDE 10
 
-#define MAP_SIDE 20
+typedef struct double2 {
+    double x, y;
+} double2;
 
-void load_map(Map *map, const char *map_data, size_t map_w, size_t map_l) {
-    map->width = map_w;
-    map->length = map_l;
-    map->tiles = malloc(sizeof(Tile) * map_w * map_l);
+double2 rotateVector(double2 v, double a) {
+    return (double2) {
+        .x = (v.x * cos(a)) + (v.y * (-sin(a))),
+        .y = (v.x * sin(a)) + (v.y * cos(a)),
+    };
+}
 
-    if (map->tiles == NULL)
-        exit(1);
+typedef struct Camera {
+    double2 pos, dir;
+} Camera;
 
-    Tile *current_tile;
-    for (int i = 0; i < map_w; ++i) {
-        for (int j = 0; j < map_l; ++j) {
-            current_tile = &map->tiles[i + j * map_w];
+typedef struct Map {
+    int width, height, tiles[MAPSIDE*MAPSIDE];
+} Map;
 
-            if (map_data[i + j * map_w] == ' ') {
-                current_tile->type = FLOOR;
-                current_tile->walkable = true;
-            } else {
-                current_tile->type = WALL;
-                current_tile->walkable = false;
-            }
+Camera initCamera() {
+    return (Camera) {
+        .pos = {0,0},
+        .dir = {0,1},
+    };
+}
+
+Map initMap() {
+    return (Map) {
+        .height = MAPSIDE,
+        .width = MAPSIDE,
+        .tiles = {
+            1,1,1,1,1,1,1,1,1,1,
+            1,0,0,0,0,0,0,0,0,1,
+            1,0,0,0,0,0,0,0,0,1,
+            1,0,0,0,0,0,0,0,0,1,
+            1,0,0,0,0,0,0,0,0,1,
+            1,0,0,0,0,0,0,0,0,1,
+            1,0,0,0,0,0,0,0,0,1,
+            1,0,0,0,0,0,0,0,0,1,
+            1,0,0,0,0,0,0,0,0,1,
+            1,1,1,1,1,1,1,1,1,1,
         }
+    };
+}
+
+double castRay(double2 pos, double2 dir, Map *m) {
+    double a = tan((dir.y - pos.y) / (dir.x - pos.x));
+    for (double ray_len = 0; ray_len < 20; ray_len+=0.05) {
+        double2 hit = {
+            .x = pos.x + ray_len * cos(a),
+            .y = pos.y + ray_len * sin(a),
+        };
+
+        int tile = m->tiles[(int)hit.x + (int)hit.y * m->width];
+        if (tile != 0)
+            return ray_len;
+    }
+
+    return 0;
+}
+
+void sweepRays(Camera c, Map m) {
+    // get the camera plane
+    
+    for (int i = 0; i < VH; ++i) {
+
     }
 }
 
-void FramebufferInit(FrameBuffer *fb) {
-    fb->width = VIEW_W;
-    fb->height = VIEW_H;
-    fb->buf = calloc(VIEW_W * VIEW_H, sizeof(uint32_t));
-}
+int main(int argc, char *argv[]) {
+    // init
+    SDL_SetAppMetadata("CastingRays", "0.0.0", "eze.eze.eze");
 
-int main() {
-    // 32 bits para rgba
-    // en vez de [x][y] hacemos [x+y*vw]
-    /*uint32_t framebuffer[VW * VH];*/
-    /*generate_default_img(framebuffer, VW, VH);*/
-
-    // mapa
-    Map map;
-    const char *mapdata = "11111111111111111111"
-                          "1  1            1  1"
-                          "1  1            1  1"
-                          "1  1            1  1"
-                          "1  11123    32111  1"
-                          "1                  1"
-                          "1                  1"
-                          "1                  1"
-                          "1                 11"
-                          "1                111"
-                          "1                 11"
-                          "1                  1"
-                          "1                  1"
-                          "1            1     1"
-                          "1111    1    1     1"
-                          "11111111111111     1"
-                          "1     1            1"
-                          "1     1            1"
-                          "1                  1"
-                          "11111111111111111111";
-
-    load_map(&map, mapdata, MAP_SIDE, MAP_SIDE);
-
-    // jugador
-    Player player;
-    PlayerInit(&player);
-
-    // framebuffer
-    FrameBuffer fb;
-    FramebufferInit(&fb);
-
-    // sdl2
-    if (SDL_Init(SDL_INIT_VIDEO) < 0)
+    int init_flags = SDL_INIT_VIDEO;
+    bool init = SDL_Init(init_flags);
+    if (!init) {
+        SDL_Log("ERROR: Couldn't init.\nSDL Error: %s\n", SDL_GetError());
         return 1;
+    }
 
-    int win_flags = SDL_WINDOW_OPENGL;
-    SDL_Window *win;
-    SDL_Renderer *ren;
-
-    int res =
-        SDL_CreateWindowAndRenderer(VIEW_W, VIEW_H, win_flags, &win, &ren);
-
-    if (res < 0) // supuestamente no tendría que chequear win/ren
+    // window
+    SDL_Window *window;
+    SDL_Renderer *renderer;
+    int win_flags = SDL_WINDOW_OPENGL; // ?
+    bool check = SDL_CreateWindowAndRenderer("CastingRays", VW, VH, win_flags,
+                                             &window, &renderer);
+    if (!check) {
+        SDL_Log("ERROR: Couldn't create window or renderer.\nSDL Error: %s\n",
+                SDL_GetError());
         return 1;
+    }
 
-    SDL_Texture *txr =
-        SDL_CreateTexture(ren, SDL_PIXELFORMAT_RGBA8888,
-                          SDL_TEXTUREACCESS_STREAMING, VIEW_W, VIEW_H);
-    if (!txr)
-        return 1;
-
-    SDL_Event event;
-    int cont = 1;
-    int xmouse = 0;
-
-    // medir fps?
-    int num_frames = 0;
-    uint32_t start_time = SDL_GetTicks();
-    uint32_t current_time;
-
-    while (cont) {
-        printf("\033[H\033[J"); // limpia terminal
-
-        ++num_frames;
-        current_time = SDL_GetTicks() - start_time;
-
-        if (current_time) {
-            double elapsedSeconds = current_time / 1000.0;
-            double fps = num_frames / elapsedSeconds;
-            printf("%f FPS\n", fps);
-        }
-
-        printf("POS %f X, %f Y\n", player.pos.x, player.pos.y);
-        printf("DIR %f RAD\n", player.direction);
-
+    // main loop
+    bool running = true;
+    while (running) {
+        // events
+        SDL_Event event;
         while (SDL_PollEvent(&event)) {
             switch (event.type) {
-            case SDL_QUIT:
-                cont = 0;
+            case SDL_EVENT_QUIT:
+                running = false;
                 break;
-            case SDL_KEYDOWN:
-                /*const uint8_t *keyboard_state = SDL_GetKeyboardState(NULL);*/
-                /*if (keyboard_state[SDL_SCANCODE_W]) {*/
-                /*    if (keyboard_state[SDL_SCANCODE_D]) {*/
-                /*        PlayerMove(&player, UPRIGHT);*/
-                /*    }*/
-                /*}*/
-
-                // trucho mal
-                switch (event.key.keysym.sym) {
-                case SDLK_w:
-                    PlayerMove(&player, UP);
-                    break;
-                case SDLK_a:
-                    PlayerMove(&player, LEFT);
-                    break;
-                case SDLK_s:
-                    PlayerMove(&player, DOWN);
-                    break;
-                case SDLK_d:
-                    PlayerMove(&player, RIGHT);
-                    break;
-                }
-                break;
-            case SDL_MOUSEMOTION:
-                if (event.motion.x > xmouse)
-                    player.direction += PI / 100.;
-                else
-                    player.direction -= PI / 100.;
-
-                xmouse = event.motion.x;
             }
         }
 
-        void *pixels;
-        int pitch;
-
-        SDL_LockTexture(txr, NULL, &pixels, &pitch);
-        // tiene que haber una forma mejor de dibujar el buffer xq esto es
-        // nefasto
-
-        generate_default_img(fb.buf, fb.width, fb.height);
-
-        render_view(&fb, &map, &player);
-
-        /*render_view(fb.buf, fb.width, fb.height, &map, player.pos,
-         * player.direction,*/
-        /*            player.fov);*/
-
-        // Copiamos el buffer a la textura que usa SDL
-        for (int i = 0; i < fb.height * fb.width; ++i) {
-            ((uint32_t *)pixels)[i] = fb.buf[i];
-        }
-
-        SDL_UnlockTexture(txr);
-
-        SDL_RenderClear(ren);
-        SDL_RenderCopy(ren, txr, NULL, NULL);
-        SDL_RenderPresent(ren);
+        // logic
     }
 
-    // limpiamos
-    free(map.tiles);
-    SDL_DestroyTexture(txr);
-    SDL_DestroyRenderer(ren);
-    SDL_DestroyWindow(win);
+    // cleanup
+    SDL_DestroyRenderer(renderer);
+    SDL_DestroyWindow(window);
     SDL_Quit();
     return 0;
 }

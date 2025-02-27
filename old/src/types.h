@@ -36,7 +36,7 @@ typedef struct {
 } Map;
 
 typedef struct {
-    float ray_length, hit_x, hit_y;
+    float ray_length, hit_x, hit_y, dir;
 } RayCast;
 
 typedef struct {
