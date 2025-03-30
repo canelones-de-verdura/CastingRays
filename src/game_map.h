@@ -1,4 +1,3 @@
-#include <stdint.h>
 #include <stdlib.h>
 
 #ifndef GAME_MAP_H
@@ -16,8 +15,7 @@ struct Map {
     struct Tile *tiles;
 };
 
-bool LoadMap(struct Map *self, const char *map_data, uint32_t map_w,
-             uint32_t map_l) {
+bool LoadMap(struct Map *self, const char *map_data, int map_w, int map_l) {
     self->width = map_w;
     self->length = map_l;
     self->tiles = malloc(sizeof(struct Tile) * map_w * map_l);
@@ -43,7 +41,7 @@ bool LoadMap(struct Map *self, const char *map_data, uint32_t map_w,
     return true;
 }
 
-struct Tile GetTileInMap(struct Map *self, uint32_t x, uint32_t y) {
+struct Tile GetTileInMap(struct Map *self, int x, int y) {
     return self->tiles[x + y * self->width];
 }
 

@@ -131,20 +131,97 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
         enum wall_align orientation;
     } raycasts[640] = {0};
 
-    // sweep view and get rays
+    // sweep view and get raycasts using DDA
     for (int i = 0; i < 640; ++i) {
         struct ray *r = &raycasts[i];
+
+        // dir in radians
         double angle = (gs->player.dir - gs->player.fov / 2.) +
                        (gs->player.fov * i) / (double)640;
 
-        for (; r->ray_length < 20; r->ray_length += .05) {
-            r->hit_x = gs->player.pos.x + r->ray_length * cos(angle);
-            r->hit_y = gs->player.pos.y + r->ray_length * sin(angle);
+        // dir as a vector
+        struct doubleVec ray_dir = {
+            .x = cos(angle),
+            .y = sin(angle),
+        };
 
-            if (GetTileInMap(&gs->map, (int)r->hit_x, (int)r->hit_y).type !=
+        /*SDL_Log("%f, %f", ray_dir.x, ray_dir.y);*/
+
+        // position as int coords- that is, the position of the tile
+        struct intVec map_pos = {
+            .x = (int)gs->player.pos.x,
+            .y = (int)gs->player.pos.y,
+        };
+
+        // "steps" needed to cross tiles. x & y can take either 1 or -1
+        // (technically 0 as well, but it's so unlikely it may as well not
+        // happen)
+        struct intVec map_step = {
+            .x = (ray_dir.x > 0) - (ray_dir.x < 0),
+            .y = (ray_dir.y > 0) - (ray_dir.y < 0),
+        };
+
+        /*SDL_Log("%d, %d", map_step.x, map_step.y);*/
+
+        // we calculate the initial lengths, that more than likely need another
+        // "step" value
+        double player_pos_dec_x = gs->player.pos.x - (int)gs->player.pos.x;
+        double player_pos_dec_y = gs->player.pos.y - (int)gs->player.pos.y;
+
+        struct doubleVec init_step = {
+            .x = (map_step.x == 1) ? 1 - player_pos_dec_x
+                                   : -player_pos_dec_x,
+            .y = (map_step.y == 1) ? 1 - player_pos_dec_y
+                                   : -player_pos_dec_y,
+        };
+
+        /*SDL_Log("%f, %f", init_step.x, init_step.y);*/
+
+        double ray_length_x = 0;
+        double ray_length_y = 0;
+
+        double step_sum_x = init_step.x;
+        double step_sum_y = init_step.y;
+
+        while (true) {
+            if (GetTileInMap(&gs->map, map_pos.x, map_pos.y).type !=
                 FLOOR)
                 break;
+
+            if (ray_length_x < ray_length_y) {
+                r->ray_length = ray_length_x;
+                r->hit_x = gs->player.pos.x + r->ray_length * cos(angle);
+                r->hit_y = gs->player.pos.y + r->ray_length * sin(angle);
+                r->orientation = WE;
+                /*SDL_Log("1. x %f", r->hit_x);*/
+                /*SDL_Log("1. y %f", r->hit_y);*/
+
+                step_sum_x += map_step.x;
+                map_pos.x += map_step.x;
+                ray_length_x = step_sum_x / cos(angle);
+            } else {
+                r->ray_length = ray_length_y;
+                r->hit_x = gs->player.pos.x + r->ray_length * cos(angle);
+                r->hit_y = gs->player.pos.y + r->ray_length * sin(angle);
+                r->orientation = NS;
+                /*SDL_Log("2. x %f", r->hit_x);*/
+                /*SDL_Log("2. y %f", r->hit_y);*/
+
+                step_sum_y += map_step.y;
+                map_pos.y += map_step.y;
+                ray_length_y = step_sum_y / sin(angle);
+            }
         }
+
+        /*r->ray_length = 0;*/
+        /*for (; r->ray_length < 20; r->ray_length += .05) {*/
+        /*    r->hit_x = gs->player.pos.x + r->ray_length * cos(angle);*/
+        /*    r->hit_y = gs->player.pos.y + r->ray_length * sin(angle);*/
+        /**/
+        /*    if (GetTileInMap(&gs->map, (int)r->hit_x, (int)r->hit_y).type !=*/
+        /*        FLOOR)*/
+        /*        break;*/
+        /*}*/
     }
 
     // render "columns"
@@ -162,7 +239,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
         double offset_x = r->hit_x - (int)r->hit_x;
         double offset_y = r->hit_y - (int)r->hit_y;
 
-        if (r->hit_x < r->hit_y) {
+        if (r->orientation == NS) {
             wallsprite.x = (int)(offset_x * 32) % 32;
         } else {
             wallsprite.x = (int)(offset_y * 32) % 32;
@@ -198,11 +275,11 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
         }
 
         if (event->key.scancode == SDL_SCANCODE_RIGHT) {
-            gs->player.dir += PI / 100.;
+            gs->player.dir += PI / 75.;
         }
 
         if (event->key.scancode == SDL_SCANCODE_LEFT) {
-            gs->player.dir -= PI / 100.;
+            gs->player.dir -= PI / 75.;
         }
     }
 
@@ -219,6 +296,7 @@ void SDL_AppQuit(void *appstate, SDL_AppResult result) {
         gs->renderer = nullptr;
         gs->window = nullptr;
     }
+    DestroyMap(&gs->map);
 
     free(gs);
     gs = nullptr;
