@@ -9,7 +9,7 @@ struct Player {
 };
 
 struct Player InitPlayer() {
-    return (struct Player){(struct doubleVec){10, 10}, 0, 106 * (PI / 180.)};
+    return (struct Player){(struct doubleVec){10, 10}, 270 * PI/180., 106 * (PI / 180.)};
 }
 
 #endif
