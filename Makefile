@@ -10,9 +10,7 @@ SRC = $(addprefix $(SRC_DIR)/, main.c)
 # ejecutable principal
 BIN = $(BUILD_DIR)/bin
 
-# asquerosidad para poder usar SDL3_image
-# TODO sacar las flags a la mierda cuando la pueda instalar con dnf
-FLAGS_LINKING = -lSDL3 -Wl,-rpath='./include/SDL3_image/' ./include/SDL3_image/libSDL3_image.so -lm
+FLAGS_LINKING = -lSDL3 -lSDL3_image -lm
 FLAGS_COMMON  = -Wall -Wextra -Wpedantic -std=c23 
 FLAGS_RELEASE = -O3
 FLAGS_TESTING = -fsanitize=address,undefined -g
