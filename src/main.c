@@ -10,7 +10,7 @@
 #include <SDL3/SDL_surface.h>
 #include <SDL3/SDL_video.h>
 
-#include "../include/SDL3_image/SDL_image.h"
+#include <SDL3_image/SDL_image.h>
 
 #include <math.h>
 #include <stdlib.h>
@@ -129,7 +129,7 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
     struct ray {
         double ray_length, hit_x, hit_y;
         enum wall_align orientation;
-    } raycasts[640] = {0};
+    } raycasts[640];
 
     // sweep view and get raycasts using DDA
     for (int i = 0; i < 640; ++i) {
@@ -145,8 +145,6 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
             .y = sin(angle),
         };
 
-        /*SDL_Log("%f, %f", ray_dir.x, ray_dir.y);*/
-
         // position as int coords- that is, the position of the tile
         struct intVec map_pos = {
             .x = (int)gs->player.pos.x,
@@ -154,74 +152,56 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
         };
 
         // "steps" needed to cross tiles. x & y can take either 1 or -1
-        // (technically 0 as well, but it's so unlikely it may as well not
-        // happen)
         struct intVec map_step = {
-            .x = (ray_dir.x > 0) - (ray_dir.x < 0),
-            .y = (ray_dir.y > 0) - (ray_dir.y < 0),
+            .x = (ray_dir.x > 0) ? 1 : -1,
+            .y = (ray_dir.y > 0) ? 1 : -1,
         };
 
-        /*SDL_Log("%d, %d", map_step.x, map_step.y);*/
+        // because every cell is the same size, we can calculate the length a
+        // segment of the ray will have between two "borders" of the grid (on
+        // the same axis)
+        struct doubleVec ray_increment = {
+            .x = sqrt(1 + (ray_dir.y / ray_dir.x) * (ray_dir.y / ray_dir.x)),
+            .y = sqrt(1 + (ray_dir.x / ray_dir.y) * (ray_dir.x / ray_dir.y)),
+        };
 
-        // we calculate the initial lengths, that more than likely need another
-        // "step" value
+        // initial lengths from wherever the origin is inside the cell to the
+        // first x-border or y-border
         double player_pos_dec_x = gs->player.pos.x - (int)gs->player.pos.x;
         double player_pos_dec_y = gs->player.pos.y - (int)gs->player.pos.y;
 
         struct doubleVec init_step = {
-            .x = (map_step.x == 1) ? 1 - player_pos_dec_x
-                                   : -player_pos_dec_x,
-            .y = (map_step.y == 1) ? 1 - player_pos_dec_y
-                                   : -player_pos_dec_y,
+            .x = (map_step.x == 1) ? 1 - player_pos_dec_x : -player_pos_dec_x,
+            .y = (map_step.y == 1) ? 1 - player_pos_dec_y : -player_pos_dec_y,
+        };
+        struct doubleVec ray_length = {
+            .x = init_step.x / cos(angle),
+            .y = init_step.y / sin(angle),
         };
 
-        /*SDL_Log("%f, %f", init_step.x, init_step.y);*/
-
-        double ray_length_x = 0;
-        double ray_length_y = 0;
-
-        double step_sum_x = init_step.x;
-        double step_sum_y = init_step.y;
-
+        // the famous cast
         while (true) {
-            if (GetTileInMap(&gs->map, map_pos.x, map_pos.y).type !=
-                FLOOR)
-                break;
-
-            if (ray_length_x < ray_length_y) {
-                r->ray_length = ray_length_x;
+            if (ray_length.x < ray_length.y) {
+                r->ray_length = ray_length.x;
                 r->hit_x = gs->player.pos.x + r->ray_length * cos(angle);
                 r->hit_y = gs->player.pos.y + r->ray_length * sin(angle);
                 r->orientation = WE;
-                /*SDL_Log("1. x %f", r->hit_x);*/
-                /*SDL_Log("1. y %f", r->hit_y);*/
 
-                step_sum_x += map_step.x;
                 map_pos.x += map_step.x;
-                ray_length_x = step_sum_x / cos(angle);
+                ray_length.x += ray_increment.x;
             } else {
-                r->ray_length = ray_length_y;
+                r->ray_length = ray_length.y;
                 r->hit_x = gs->player.pos.x + r->ray_length * cos(angle);
                 r->hit_y = gs->player.pos.y + r->ray_length * sin(angle);
                 r->orientation = NS;
-                /*SDL_Log("2. x %f", r->hit_x);*/
-                /*SDL_Log("2. y %f", r->hit_y);*/
 
-                step_sum_y += map_step.y;
                 map_pos.y += map_step.y;
-                ray_length_y = step_sum_y / sin(angle);
+                ray_length.y += ray_increment.y;
             }
-        }
 
-        /*r->ray_length = 0;*/
-        /*for (; r->ray_length < 20; r->ray_length += .05) {*/
-        /*    r->hit_x = gs->player.pos.x + r->ray_length * cos(angle);*/
-        /*    r->hit_y = gs->player.pos.y + r->ray_length * sin(angle);*/
-        /**/
-        /*    if (GetTileInMap(&gs->map, (int)r->hit_x, (int)r->hit_y).type !=*/
-        /*        FLOOR)*/
-        /*        break;*/
-        /*}*/
+            if (GetTileInMap(&gs->map, map_pos.x, map_pos.y).type != FLOOR)
+                break;
+        }
     }
 
     // render "columns"
