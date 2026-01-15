@@ -12,13 +12,13 @@ BIN = $(BUILD_DIR)/bin
 
 FLAGS_LINKING = -lSDL3 -lSDL3_image -lm
 FLAGS_COMMON  = -Wall -Wextra -Wpedantic -std=c23 
-FLAGS_RELEASE = -O3
+FLAGS_RELEASE = -O2
 FLAGS_TESTING = -fsanitize=address,undefined -g
 
 release: FLAGS = $(FLAGS_COMMON) $(FLAGS_RELEASE) $(FLAGS_LINKING)
 release: $(BIN)
 
-testing: FLAGS = $(FLAGS_COMMON) $(FLAGS_TESTING)
+testing: FLAGS = $(FLAGS_COMMON) $(FLAGS_TESTING) $(FLAGS_LINKING)
 testing: $(BIN)
 
 $(BIN): $(SRC)
