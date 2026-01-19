@@ -51,10 +51,15 @@ SDL_AppResult LogAndDie(const char msg[]) {
 SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
     /* global state */
     static struct state gs = (struct state){
+        // .win_width = 1280,
+        // .win_height = 720,
+        // .logical_win_width = 640,
+        // .logical_win_height = 360,
+        //
         .win_width = 1280,
-        .win_height = 720,
+        .win_height = 960,
         .logical_win_width = 640,
-        .logical_win_height = 360,
+        .logical_win_height = 480,
 
         .start_time = 0,
         .frame_time = 0,
@@ -67,10 +72,12 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
         return LogAndDie("Failure to initialize");
 
     /* window and renderer */
+    // constexpr int win_init_flags = SDL_WINDOW_FULLSCREEN | SDL_WINDOW_VULKAN;
+    constexpr int win_init_flags = 0;
     if (!SDL_CreateWindowAndRenderer("Casting Rays",
                                      gs.win_width,
                                      gs.win_height,
-                                     0,
+                                     win_init_flags,
                                      &gs.window,
                                      &gs.renderer))
         return LogAndDie("Failure to create window or renderer");
@@ -136,82 +143,6 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
     return SDL_APP_CONTINUE;
 }
 
-struct raycast {
-    double ray_length, hit_x, hit_y;
-    int wall_align; // 0 or 1
-};
-
-struct raycast cast_ray(struct Map *map, struct FVec2 origin, double angle) {
-    struct raycast r;
-
-    // dir as a vector
-    struct FVec2 ray_dir = {
-        .x = cos(angle),
-        .y = sin(angle),
-    };
-
-    // position as int coords- that is, the position of the tile
-    struct Vec2 map_pos = {
-        .x = (int)origin.x,
-        .y = (int)origin.y,
-    };
-
-    // "steps" needed to cross tiles. x & y can take either 1 or -1
-    struct Vec2 map_step = {
-        .x = (ray_dir.x > 0) ? 1 : -1,
-        .y = (ray_dir.y > 0) ? 1 : -1,
-    };
-
-    // because every cell is the same size, we can calculate the length a
-    // segment of the ray will have between two "borders" of the grid (on
-    // the same axis)
-    struct FVec2 ray_increment = {
-        .x = sqrt(1 + (ray_dir.y / ray_dir.x) * (ray_dir.y / ray_dir.x)),
-        .y = sqrt(1 + (ray_dir.x / ray_dir.y) * (ray_dir.x / ray_dir.y)),
-    };
-
-    // initial lengths from wherever the origin is inside the cell to the
-    // first x-border or y-border
-    double origin_dec_x = origin.x - (int)origin.x;
-    double origin_dec_y = origin.y - (int)origin.y;
-
-    struct FVec2 init_step = {
-        .x = (map_step.x == 1) ? 1 - origin_dec_x : -origin_dec_x,
-        .y = (map_step.y == 1) ? 1 - origin_dec_y : -origin_dec_y,
-    };
-
-    struct FVec2 ray_length = {
-        .x = init_step.x / cos(angle),
-        .y = init_step.y / sin(angle),
-    };
-
-    // the famous cast
-    while (true) {
-        if (ray_length.x < ray_length.y) {
-            r.ray_length = ray_length.x;
-            r.hit_x = origin.x + r.ray_length * cos(angle);
-            r.hit_y = origin.y + r.ray_length * sin(angle);
-            r.wall_align = 1;
-
-            map_pos.x += map_step.x;
-            ray_length.x += ray_increment.x;
-        } else {
-            r.ray_length = ray_length.y;
-            r.hit_x = origin.x + r.ray_length * cos(angle);
-            r.hit_y = origin.y + r.ray_length * sin(angle);
-            r.wall_align = 0;
-
-            map_pos.y += map_step.y;
-            ray_length.y += ray_increment.y;
-        }
-
-        if (GetTileInMap(map, map_pos.x, map_pos.y).type != TILE_FLOOR)
-            break;
-    }
-
-    return r;
-}
-
 void render(struct state *gs) {
     // it is, probably, "bad practice" to throw the entire global state to a
     // single function. i do not really care
@@ -235,7 +166,7 @@ void render(struct state *gs) {
         struct FVec2 origin =
             (struct FVec2){gs->camera.pos.x, gs->camera.pos.y};
 
-        raycasts[i] = cast_ray(&gs->map, origin, angle);
+        raycasts[i] = Camera_raycast(origin, angle, &gs->map);
     }
 
     // render "columns"
