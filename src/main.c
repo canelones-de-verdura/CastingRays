@@ -189,7 +189,7 @@ void render(State *gs) {
                                 : gs->ctx.logical_win_height / ray->ray_length;
 
         int col_y = gs->ctx.logical_win_height / 2. - column_height / 2. +
-                    gs->scene.camera.pos.z;
+                    gs->scene.camera.vertical_offset;
 
         // the texture begins in (0, 0). i want to offset the first value to
         // get the "slice" or "column" to render.
@@ -237,6 +237,13 @@ void render(State *gs) {
         SDL_SetTextureColorModFloat(
             gs->scene.spritesheet, c_original.r, c_original.g, c_original.b);
     }
+
+    // "crosshair"
+    SDL_SetRenderDrawColor(gs->ctx.renderer, 255, 255, 255, 255);
+    SDL_RenderPoint(gs->ctx.renderer,
+                    gs->ctx.logical_win_width / 2.,
+                    gs->ctx.logical_win_height / 2.);
+    SDL_SetRenderDrawColor(gs->ctx.renderer, 0, 0, 0, 0);
 
     SDL_RenderPresent(gs->ctx.renderer);
 }
