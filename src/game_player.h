@@ -1,15 +1,10 @@
 #include "game_map.h"
 #include "game_math.h"
+#include <math.h>
 #include <stddef.h>
 
 #ifndef GAME_PLAYER_H
 #define GAME_PLAYER_H
-
-enum camera_sway {
-    SWAY_IDLE,
-    SWAY_UP,
-    SWAY_DOWN,
-};
 
 struct Camera {
     struct FVec2 pos; // coordinates
@@ -19,55 +14,55 @@ struct Camera {
 
     double fov; // in radians
 
-    enum camera_sway sway;
-    double sway_amount;
+    double sway_speed;
+    double sway_time;
     double vertical_offset; // zero is the center of the screen
     double offset_max;
+
+    double tilt_angle;
+    double tilt_max;
 };
 
 struct Camera Camera_init() {
-    return (struct Camera){.pos = (struct FVec2){10, 10},
-                           .dir = {cos(270 * PI / 180.), sin(270 * PI / 180.)},
-                           .vel = {0, 0},
-                           // .fov = 106 * (PI / 180.),
-                           .fov = 75 * (PI / 180.),
+    return (struct Camera){
+        .pos = (struct FVec2){10, 10},
+        .dir = {cos(270 * PI / 180.), sin(270 * PI / 180.)},
+        .vel = {0, 0},
+        // .fov = 106 * (PI / 180.),
+        .fov = 75 * (PI / 180.),
+        // .fov = 90 * (PI / 180.),
 
-                           .sway = SWAY_IDLE,
-                           .sway_amount = .5,
-                           .offset_max = 3};
+        .sway_speed = 15,
+        .offset_max = 5,
+        .tilt_max = 50,
+    };
 }
 
 void Camera_velUpdate(struct Camera *self, struct FVec2 vel) {
-    if (vec_eq(vel, (struct FVec2){})) {
-        if (self->vertical_offset == 0) {
-            self->sway = SWAY_IDLE;
-        }
-    } else {
-        if (self->sway == SWAY_IDLE) {
-            self->sway = SWAY_UP;
-        }
-    }
-
     self->vel = vel;
 }
 
 void Camera_physUpdate(struct Camera *self, double dt) {
-    // ...
     self->pos.x += self->vel.x * dt;
     self->pos.y += self->vel.y * dt;
 
-    if (self->sway == SWAY_UP) {
-        if (self->vertical_offset == self->offset_max) {
-            self->sway = SWAY_DOWN;
-            self->vertical_offset -= self->sway_amount;
+    bool moving = !vec_eq(self->vel, ((struct FVec2){0, 0}));
+
+    if (moving) {
+        self->sway_time += self->sway_speed * dt;
+        self->vertical_offset = self->offset_max * sin(self->sway_time);
+    } else {
+        if (self->vertical_offset > 0)
+            self->vertical_offset -= self->sway_speed * dt * 5;
+        if (self->vertical_offset < 0)
+            self->vertical_offset += self->sway_speed * dt * 5;
+
+        // ACORDATE NUNCA COMPARAR FLOATS
+        if (fabs(self->vertical_offset) < .01 ||
+            fabs(self->vertical_offset) > .01) {
+            self->vertical_offset = 0;
+            self->sway_time = 0;
         }
-        self->vertical_offset += self->sway_amount;
-    } else if (self->sway == SWAY_DOWN) {
-        if (self->vertical_offset == -self->offset_max) {
-            self->sway = SWAY_UP;
-            self->vertical_offset += self->sway_amount;
-        }
-        self->vertical_offset -= self->sway_amount;
     }
 }
 

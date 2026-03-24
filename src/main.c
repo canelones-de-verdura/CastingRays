@@ -53,6 +53,13 @@ typedef struct {
     Game scene;
 } State;
 
+typedef struct Command Command;
+struct Command {
+    void (*execute)(Command *self);
+};
+
+Command cmd;
+
 SDL_AppResult LogAndDie(const char msg[]) {
     SDL_Log("[ERROR] %s - %s", msg, SDL_GetError());
     return SDL_APP_FAILURE;
@@ -97,6 +104,16 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
                                           SDL_LOGICAL_PRESENTATION_LETTERBOX))
         return LogAndDie("Failure to set logical resolution");
 
+    if (!(gs.ctx.draw_target = SDL_CreateTexture(gs.ctx.renderer,
+                                                 SDL_PIXELFORMAT_RGBA8888,
+                                                 SDL_TEXTUREACCESS_TARGET,
+                                                 gs.ctx.logical_win_width,
+                                                 gs.ctx.logical_win_height)))
+        return LogAndDie("Failure to set logical resolution");
+
+    if (!SDL_SetTextureScaleMode(gs.ctx.draw_target, SDL_SCALEMODE_NEAREST))
+        return LogAndDie("Failure to set texture scale mode.");
+
     // load sprites from disc to VRAM (or normal RAM in iGPUs, i guess)
     gs.scene.spritesheet =
         IMG_LoadTexture(gs.ctx.renderer, "./assets/sprites_walls.png");
@@ -124,22 +141,22 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
         "1                  1"
         "1                  1"
         "1                  1"
+        "1            1     1"
+        "1    11      1     1"
+        "1    1             1"
         "1                  1"
         "1                  1"
         "1                  1"
         "1                  1"
+        "1      1           1"
         "1                  1"
         "1                  1"
-        "1                  1"
-        "1                  1"
-        "1                  1"
-        "1                  1"
-        "1                  1"
+        "1           1      1"
         "1                  1"
         "11111111111111111111";
 
     if (!LoadMap(&gs.scene.map, mapdata, 20, 20))
-        LogAndDie("Failure to load map");
+        return LogAndDie("Failure to load map");
 
     /* assign everything to the global state */
     *appstate = &gs;
@@ -150,6 +167,8 @@ SDL_AppResult SDL_AppInit(void **appstate, int argc, char **argv) {
 void render(State *gs) {
     // it is, probably, "bad practice" to throw the entire global state to a
     // single function. i do not really care
+
+    SDL_SetRenderTarget(gs->ctx.renderer, gs->ctx.draw_target);
 
     SDL_RenderClear(gs->ctx.renderer);
 
@@ -240,10 +259,48 @@ void render(State *gs) {
 
     // "crosshair"
     SDL_SetRenderDrawColor(gs->ctx.renderer, 255, 255, 255, 255);
+
     SDL_RenderPoint(gs->ctx.renderer,
                     gs->ctx.logical_win_width / 2.,
                     gs->ctx.logical_win_height / 2.);
+    SDL_RenderPoint(gs->ctx.renderer,
+                    gs->ctx.logical_win_width / 2. + 1,
+                    gs->ctx.logical_win_height / 2.);
+    SDL_RenderPoint(gs->ctx.renderer,
+                    gs->ctx.logical_win_width / 2. + 2,
+                    gs->ctx.logical_win_height / 2.);
+    SDL_RenderPoint(gs->ctx.renderer,
+                    gs->ctx.logical_win_width / 2. - 1,
+                    gs->ctx.logical_win_height / 2.);
+    SDL_RenderPoint(gs->ctx.renderer,
+                    gs->ctx.logical_win_width / 2. - 2,
+                    gs->ctx.logical_win_height / 2.);
+    SDL_RenderPoint(gs->ctx.renderer,
+                    gs->ctx.logical_win_width / 2.,
+                    gs->ctx.logical_win_height / 2. + 1);
+    SDL_RenderPoint(gs->ctx.renderer,
+                    gs->ctx.logical_win_width / 2.,
+                    gs->ctx.logical_win_height / 2. + 2);
+    SDL_RenderPoint(gs->ctx.renderer,
+                    gs->ctx.logical_win_width / 2.,
+                    gs->ctx.logical_win_height / 2. - 1);
+    SDL_RenderPoint(gs->ctx.renderer,
+                    gs->ctx.logical_win_width / 2.,
+                    gs->ctx.logical_win_height / 2. - 2);
+
     SDL_SetRenderDrawColor(gs->ctx.renderer, 0, 0, 0, 0);
+
+    SDL_SetRenderTarget(gs->ctx.renderer, nullptr);
+
+    SDL_RenderClear(gs->ctx.renderer);
+
+    SDL_RenderTextureRotated(gs->ctx.renderer,
+                             gs->ctx.draw_target,
+                             nullptr,
+                             nullptr,
+                             gs->scene.camera.tilt_angle,
+                             nullptr,
+                             SDL_FLIP_NONE);
 
     SDL_RenderPresent(gs->ctx.renderer);
 }
@@ -252,6 +309,20 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
     State *gs = appstate;
     if (!gs->ctx.app_is_active)
         return SDL_APP_CONTINUE;
+
+    /* timing, again */
+    int delay = gs->ctx.start_time + 16.67 - SDL_GetTicks();
+    SDL_Log("%d\n", delay);
+    if (delay > 0)
+        SDL_Delay(delay); // Locks the frame rate at 60
+
+    gs->ctx.frame_time = SDL_GetTicks() - gs->ctx.start_time;
+    gs->ctx.delta_time = gs->ctx.frame_time / 1000.;
+    if (gs->ctx.frame_time) {
+        double fps = 1000. / gs->ctx.frame_time;
+        // SDL_Log("%f FPS", fps);
+        // SDL_Log("%f delta", gs->ctx.delta_time);
+    }
 
     const bool *keyboard = SDL_GetKeyboardState(nullptr);
 
@@ -272,6 +343,8 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
             atan2(gs->scene.camera.dir.y, gs->scene.camera.dir.x);
         move.x -= cos(dir_angle + 90 * PI / 180) * 5;
         move.y -= sin(dir_angle + 90 * PI / 180) * 5;
+
+        gs->scene.camera.tilt_angle = -.5;
     }
 
     if (keyboard[SDL_SCANCODE_S]) {
@@ -286,24 +359,18 @@ SDL_AppResult SDL_AppIterate(void *appstate) {
             atan2(gs->scene.camera.dir.y, gs->scene.camera.dir.x);
         move.x += cos(dir_angle + 90 * PI / 180) * 5;
         move.y += sin(dir_angle + 90 * PI / 180) * 5;
+
+        gs->scene.camera.tilt_angle = .5;
+    }
+
+    if (!keyboard[SDL_SCANCODE_A] && !keyboard[SDL_SCANCODE_D]) {
+        gs->scene.camera.tilt_angle = 0;
     }
 
     Camera_velUpdate(&gs->scene.camera, move);
     Camera_physUpdate(&gs->scene.camera, gs->ctx.delta_time);
 
     render(gs);
-
-    /* timing, again */
-    SDL_Delay(gs->ctx.start_time + 16.67 -
-              SDL_GetTicks()); // Locks the frame rate at 60
-
-    gs->ctx.frame_time = SDL_GetTicks() - gs->ctx.start_time;
-    gs->ctx.delta_time = gs->ctx.frame_time / 1000.;
-    if (gs->ctx.frame_time) {
-        double fps = 1000. / gs->ctx.frame_time;
-        SDL_Log("%f FPS", fps);
-        SDL_Log("%f delta", gs->ctx.delta_time);
-    }
 
     return SDL_APP_CONTINUE;
 }
@@ -341,8 +408,7 @@ SDL_AppResult SDL_AppEvent(void *appstate, SDL_Event *event) {
     }
 
     if (event->type == SDL_EVENT_KEY_UP) {
-        switch (event->key.scancode) {
-        case SDL_SCANCODE_ESCAPE:
+        if (event->key.scancode == SDL_SCANCODE_ESCAPE) {
             return SDL_APP_SUCCESS;
         }
     }
@@ -360,6 +426,7 @@ void SDL_AppQuit(void *appstate, SDL_AppResult result) {
     State *gs = appstate;
     if (result != SDL_APP_FAILURE) {
         SDL_DestroyTexture(gs->scene.spritesheet);
+        SDL_DestroyTexture(gs->ctx.draw_target);
         SDL_DestroyRenderer(gs->ctx.renderer);
         SDL_DestroyWindow(gs->ctx.window);
         gs->scene.spritesheet = nullptr;
